@@ -36,13 +36,15 @@ app.use(sessions({
     cookie: { maxAge: 72000 }
 }));
 
-app.get('/', function(req, res){
-  if (req.session.loggedin === true){
-      res.status(200).send(loggedin = true);
-  }else{
-      res.status(200).send(loggedin = false);
+
+app.get('/', function(req, res) {
+  if (req.session.loggedin === true) {
+    res.status(200).send({ loggedin: true });
+  } else {
+    res.status(200).send({ loggedin: false });
   }
 });
+
 
 app.listen(port, () => {
   console.log(`Web Service Running on port ${port}`)
