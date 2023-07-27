@@ -1,5 +1,4 @@
-//const db  = require("../config/db.config");
-const jwt = require('jsonwebtoken');
+const jwt     = require('jsonwebtoken');
 const bcrypt  = require('bcryptjs');
 
 const db = require("../models");
@@ -9,55 +8,58 @@ const Op   = db.Sequelize.Op;
 
 var session;
 
-// Process login 
+// Process login
 exports.process = (req, res) => {
-    User.findAll({
-        where:{
-            email: req.body.email
+    User.findOne({
+        where: {
+        email: req.body.email,
         },
-        raw:true,
-        nest:true,
-    }).then((data) => {
-        bcrypt.compare( req.body.password, data[0].password,
-            (bErr, bResult) => {
-                // wrong password
-                if (bErr) { 
-                    throw bErr; 
-                }
-                if (bResult && data.length > 0) {
-                    const token = jwt.sign({id:data[0].id},'the-super-strong-secrect',{ expiresIn: '120' });
-                    User.update({ token : token },{ where : { id : data[0].id }});
+    })
+    .then((data) => {
 
-                    
-                    //db.query(`UPDATE users SET last_login = now() WHERE user_id = '${data[0].user_id}'`);
-                    req.session.loggedin = true;
-                    username = req.session.username = data[0].name;
-                    session = req.session;
-
-                    const userdata = {
-                        id   : data[0].id,
-                        name : data[0].name,
-                        role : data[0].role,
-                        loggedin : req.session.loggedin
-                    }
-                    
-                    //console.log(userdata)
-                    res.status(200).send(userdata);
-                }else{
-                    res.status(401).send({
-                        message: 'Email or password is incorrect!'
-                    });
-                }
-        
-            }
-        );
-    }).catch((err) => {
-        res.status(500).send({
-            message: "Error bangsat nda ada"
+    if (!data) {
+        res.status(401).send({
+            message: 'Email or password is incorrect!',
         });
-    });
+        return;
+    }
     
+    bcrypt.compare(req.body.password, data.password, (bErr, bResult) => {
+        if (bErr) {
+            throw bErr;
+        }
+        if (bResult) {
+            const token = jwt.sign({ id: data.id }, 'the-super-strong-secrect', {
+                expiresIn: '120',
+            });
+
+            User.update({ token: token }, { where: { id: data.id } }).then(() => {
+                req.session.loggedin = true;
+                req.session.username = data.name;
+                const userdata = {
+                id: data.id,
+                name: data.name,
+                role: data.role,
+                loggedin: req.session.loggedin,
+                };
+                res.status(200).send(userdata);
+            });
+
+        } else {
+            res.status(500).send({
+                message: 'Email or password is incorrect!',
+            });
+        }
+        });
+    })
+    .catch((err) => {
+    console.log(err);
+    res.status(500).send({
+        message: err.message,
+    });
+    });
 };
+  
 
 // Process login 
 exports.logout = (req, res) => {

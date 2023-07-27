@@ -6,7 +6,7 @@ module.exports = (sequelize, Sequelize) => {
             primaryKey: true
         },
         name: {
-            type: Sequelize.STRING(15)
+            type: Sequelize.STRING(100)
         },
         email: {
             type: Sequelize.STRING(30)
@@ -20,7 +20,7 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: 'Reguler' // Set the default value to 'reguler user'
         },
         token: {
-            type: Sequelize.STRING(100)
+            type: Sequelize.TEXT
         },
         last_login: {
             type: Sequelize.DATE,

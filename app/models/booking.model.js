@@ -6,7 +6,7 @@ module.exports = (sequelize, Sequelize) => {
             primaryKey: true
         },
         tgl_kelas: {
-            type: Sequelize.DATE,
+            type: Sequelize.DATEONLY,
             allowNull: true,
             defaultValue: null
         },
@@ -20,13 +20,23 @@ module.exports = (sequelize, Sequelize) => {
             allowNull: true,
             defaultValue: null
         },
+        durasi: {
+            type: Sequelize.STRING(30),
+            allowNull: true,
+            defaultValue: null
+        },
+        selesai: {
+            type: Sequelize.TIME,
+            allowNull: true,
+            defaultValue: null
+        },
         jenis_kelas: {
             type: Sequelize.ENUM('privat', 'group'),
             allowNull: true,
             defaultValue: 'privat'
         },
-        durasi: {
-            type: Sequelize.STRING(30),
+        user_group: {
+            type: Sequelize.TEXT,
             allowNull: true,
             defaultValue: null
         },

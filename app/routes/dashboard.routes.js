@@ -14,5 +14,8 @@ module.exports = app => {
     // Count Room
     router.get("/postCount", dashboard.countPost);
 
+    // Booking Data
+    router.get("/booking", dashboard.getBooking);
+
     app.use("/api/dashboard", router);
 }

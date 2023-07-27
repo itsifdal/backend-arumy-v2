@@ -71,9 +71,10 @@ exports.findOne = (req, res) => {
 
 // Find a single User with an id
 exports.findByEmail = (req, res) => {
-    const email = req.params.email;
+    const email = req.body.email;
+    let condition = email ? { email: { [Op.like]: `%${email}%` } } : null;
 
-    User.findByEmail(email)
+    User.findAll({where : condition})
         .then((data) => {
             res.send(data);
         }).catch((err) => {

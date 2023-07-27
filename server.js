@@ -1,34 +1,26 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const cors  = require("cors");
-const FileUpload = require('express-fileupload');
+const express = require('express')
+const app     = express()
+const port    = 8080
 
-const cookieParser = require('cookie-parser');
+const bodyParser    = require("body-parser");
+const cors          = require("cors");
+const FileUpload    = require('express-fileupload');
+const cookieParser  = require('cookie-parser');
+const sessions      = require('express-session');
+const { sequelize } = require('./app/models');
 
-// Models
-const db = require("./app/models");
-const sessions = require('express-session');
+// CORS enabled for all
+app.use(cors())
 
-//intialize app
-const app = express();
-
-// app.use(cors())
-app.use(cors({
-  origin: 'http://localhost:3000',
-  credentials: true
-}));
+// Database synchronization
+sequelize.sync();
 
 // File Uploading Needs 
 app.use(FileUpload());
 app.use(express.static("public"));
 
-// app.get('/', function(req, res, next) {
-//   res.json({msg: 'Booking Room RESTAPI | CORS-enabled for all origins!'})
-// });
-
-app.listen(8080, function () {
-  console.log('CORS-enabled web server listening on port 8080')
-})
+// cookie parser middleware
+app.use(cookieParser());
 
 // parse requests of content-type - application/json
 app.use(bodyParser.json());
@@ -52,11 +44,9 @@ app.get('/', function(req, res){
   }
 });
 
-// cookie parser middleware
-app.use(cookieParser());
-
-// Sync database
-db.sequelize.sync();
+app.listen(port, () => {
+  console.log(`Web Service Running on port ${port}`)
+})
 
 // Routes
 require("./app/routes/login.routes")(app);

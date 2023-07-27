@@ -1,5 +1,8 @@
 const db = require("../models");
 const Teacher = db.teachers;
+const Booking = db.bookings;
+const { Sequelize } = require('sequelize');
+
 
 // Retrieve all teachers from the database.
 exports.findAll = (req, res) => {
@@ -23,6 +26,25 @@ exports.findOne = (req, res) => {
                 message: "Tidak berhasil menampilkan data teacher dengan id => " + id
             });
         });
+};
+
+// Find a single teacher with an id
+exports.countTeachHours = (req, res) => {
+    const id = req.params.id;
+
+    Booking.findAll({
+        attributes: [
+            'teacherId', 
+            [Sequelize.fn('SUM', Sequelize.col('durasi')), 'total_hour'],
+        ],
+        where: { teacherId: id, status: 'pending', }
+    })
+    .then((data) => {
+        res.send({data : data});
+    })
+    .catch((err) => {
+        res.status(500).send({ message: err });
+    });
 };
 
 // Create and Save a new teacher

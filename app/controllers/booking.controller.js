@@ -4,7 +4,9 @@ const User    = db.users;
 const Room    = db.rooms;
 const Teacher = db.teachers;
 const Instrument = db.instruments;
-const { Op } = require("sequelize");
+const { Sequelize, Op } = require("sequelize");
+
+const moment = require('moment');
 
 //-- Relationships
 Room.hasMany(Booking);
@@ -49,16 +51,70 @@ exports.list = (req, res) => {
     
 };
 
-// Find a single Booking by Status
-exports.findByNewFilter = (req, res) => {
-    const teacherId  = req.body.teacherId;
-    const roomId = req.body.roomId;
+// Find a single Booking by teacher id or room id.
+exports.getWithFilter = (req, res) => {
+    
+    const { status, roomId, teacherId, tgl_kelas, jam_booking, page, perPage } = req.query;
+
+    // Parse page and perPage parameters and provide default values if not present
+    const pageNumber   = parseInt(page) || 1;
+    const itemsPerPage = parseInt(perPage) || 10;
+
+    // Calculate offset and limit for pagination
+    const offset = (pageNumber - 1) * itemsPerPage;
+    const limit  = itemsPerPage;
+
+    // Build the filter object dynamically, ignoring null parameters
+    const filter = {
+      status: status || { [Op.ne]: null },
+      roomId: roomId || { [Op.ne]: null },
+      teacherId: teacherId || { [Op.ne]: null },
+      tgl_kelas: tgl_kelas || { [Op.ne]: null },
+      jam_booking: jam_booking ? { [Op.gte]: jam_booking } : { [Op.ne]: null }
+    };
+
+    Booking.findAll({
+        where:filter,
+        attributes: ['id', 'user_group', 'teacherId', 'roomId', 'status', 'tgl_kelas','jam_booking','durasi','selesai'],
+        offset,
+        limit,
+        include: [
+            {
+                model: Room,
+                attributes: ['nama_ruang']
+            },
+            {
+                model: Teacher,
+                attributes: ['nama_pengajar']
+            }
+            //,
+            // {
+            //     model: Instrument,
+            //     attributes: ['nama_instrument']
+            // }
+        ]
+    }).then((data) => {
+            res.send({data:data});
+        }).catch((err) => {
+            res.status(500).send({
+                message: `gagal menampilkan data booking, ${err}`
+            });
+        });
+};
+
+// Find a single Booking by Date Range or status
+exports.findByDateRange = (req, res) => {
+    const rangeAwal  = req.query.dateFrom;
+    const rangeAkhir = req.query.dateTo;
 
     Booking.findAll({
         where:{
             [Op.or]: [
-                { teacherId : teacherId },
-                { roomId : roomId },
+                {
+                    tgl_kelas: {
+                        [Op.between]: [rangeAwal, rangeAkhir],
+                    }
+                }
             ],
         },
         include: [
@@ -84,80 +140,6 @@ exports.findByNewFilter = (req, res) => {
         }).catch((err) => {
             res.status(500).send({
                 message: "Error retrieving Booking data with status=" + err
-            });
-        });
-};
-
-// Find a single Booking by Status
-exports.findByTeacher = (req, res) => {
-    const teacherId = req.params.teacherId;
-
-    Booking.findAll({
-        where:{
-            teacherId: teacherId
-        },
-        include: [
-            {
-                model: User,
-                attributes: ['name']
-            },
-            {
-                model: Room,
-                attributes: ['nama_ruang']
-            },
-            {
-                model: Teacher,
-                attributes: ['nama_pengajar']
-            },
-            {
-                model: Instrument,
-                attributes: ['nama_instrument']
-            }
-        ],
-        raw:true,
-        nest:true,
-    }).then((data) => {
-            res.send({data:data});
-        }).catch((err) => {
-            res.status(500).send({
-                message: "Error retrieving Booking data with status=" + status
-            });
-        });
-};
-
-// Find a single Booking by Status
-exports.findByRoom = (req, res) => {
-    const roomId = req.params.roomId;
-
-    Booking.findAll({
-        where:{
-            roomId: roomId
-        },
-        include: [
-            {
-                model: User,
-                attributes: ['name']
-            },
-            {
-                model: Room,
-                attributes: ['nama_ruang']
-            },
-            {
-                model: Teacher,
-                attributes: ['nama_pengajar']
-            },
-            {
-                model: Instrument,
-                attributes: ['nama_instrument']
-            }
-        ],
-        raw:true,
-        nest:true,
-    }).then((data) => {
-            res.send({data:data});
-        }).catch((err) => {
-            res.status(500).send({
-                message: "Error retrieving Booking data with status=" + status
             });
         });
 };
@@ -197,124 +179,6 @@ exports.findById = (req, res) => {
         });
 };
 
-// Find a single Booking by Status
-exports.findByStatus = (req, res) => {
-    const status = req.params.status;
-
-    Booking.findAll({
-        where:{
-            status: status
-        },
-        include: [
-            {
-                model: User,
-                attributes: ['name']
-            },
-            {
-                model: Room,
-                attributes: ['nama_ruang']
-            },
-            {
-                model: Teacher,
-                attributes: ['nama_pengajar']
-            },
-            {
-                model: Instrument,
-                attributes: ['nama_instrument']
-            }
-        ],
-        raw:true,
-        nest:true,
-    }).then((data) => {
-            res.send({data:data});
-        }).catch((err) => {
-            res.status(500).send({
-                message: "Error retrieving Booking data with status=" + status
-            });
-        });
-};
-
-// Find a single Booking by Status
-exports.findByDate = (req, res) => {
-    const rangeAwal  = req.params.rangeAwal;
-    const rangeAkhir = req.params.rangeAkhir;
-
-    Booking.findAll({
-        where:{
-            tgl_kelas: {
-                [Op.between]: [rangeAwal, rangeAkhir],
-            }
-        },
-        include: [
-            {
-                model: User,
-                attributes: ['name']
-            },
-            {
-                model: Room,
-                attributes: ['nama_ruang']
-            },
-            {
-                model: Teacher,
-                attributes: ['nama_pengajar']
-            },
-            {
-                model: Instrument,
-                attributes: ['nama_instrument']
-            }
-        ]
-    }).then((data) => {
-            res.send({data:data});
-        }).catch((err) => {
-            res.status(500).send({
-                message: "Error retrieving Booking data with status=" + err
-            });
-        });
-};
-
-// Find a single Booking by Status
-exports.findByFilter = (req, res) => {
-    const rangeAwal  = req.body.rangeAwal;
-    const rangeAkhir = req.body.rangeAkhir;
-    const status     = req.body.status;
-
-    Booking.findAll({
-        where:{
-            [Op.or]: [
-                {
-                    tgl_kelas: {
-                        [Op.between]: [rangeAwal, rangeAkhir],
-                    }
-                },
-                { status : status },
-            ],
-        },
-        include: [
-            {
-                model: User,
-                attributes: ['name']
-            },
-            {
-                model: Room,
-                attributes: ['nama_ruang']
-            },
-            {
-                model: Teacher,
-                attributes: ['nama_pengajar']
-            },
-            {
-                model: Instrument,
-                attributes: ['nama_instrument']
-            }
-        ]
-    }).then((data) => {
-            res.send({data:data});
-        }).catch((err) => {
-            res.status(500).send({
-                message: "Error retrieving Booking data with status=" + err
-            });
-        });
-};
 
 // Create and Save a new Booking
 exports.create = (req, res) => {
@@ -325,6 +189,7 @@ exports.create = (req, res) => {
         cabang : req.body.cabang,
         jam_booking : req.body.jam_booking,
         jenis_kelas : req.body.jenis_kelas,
+        user_group : req.body.user_group,
         durasi : req.body.durasi,
         status : req.body.status,
         roomId: req.body.roomId,
@@ -333,34 +198,65 @@ exports.create = (req, res) => {
         instrumentId: req.body.instrumentId,
     };
 
-    Booking.findAll({
-        where:{
+    Booking.findOne({
+        where: {
             roomId: req.body.roomId,
-            tgl_kelas : req.body.tgl_kelas,
+            tgl_kelas: req.body.tgl_kelas,
             [Op.or]: [
-                { jam_booking: req.body.jam_booking }
+                {
+                    [Op.and]: [
+                    { jam_booking: { [Op.lte]: req.body.jam_booking } },
+                    { selesai: { [Op.gt]: req.body.jam_booking } },
+                    ],
+                },
+                {
+                    [Op.and]: [
+                    { jam_booking: { [Op.lt]: req.body.selesai } },
+                    { selesai: { [Op.gt]: req.body.jam_booking } },
+                    ],
+                },
+                {
+                    [Op.and]: [
+                    { jam_booking: { [Op.gte]: req.body.jam_booking } },
+                    { selesai: { [Op.lte]: req.body.selesai } },
+                    ],
+                },
             ],
-            [Op.or]: [
-                {jam_booking: {
-                    [Op.lt] : req.body.jam_booking
-                }}
-            ]
         },
-        attributes: ['roomId', 'tgl_kelas','jam_booking']
-    }).then((data) => {
-        if (data.length > 0) {
+    })
+    .then((existingBooking) => {
+        if (existingBooking) {
             res.status(200).send({
-                message: "Invalid Request, Schedule Same",
+                message: 'Invalid Request, Schedule Conflict',
             });
-        }
-        else if (data === null || data.length === 0) {
+        } else {
+            // Sum jam_booking with durasi into selesai
+            const startMoment = moment(req.body.jam_booking, 'HH:mm:ss'); // Parse the booking time
+            const endMoment = startMoment.clone().add(req.body.durasi, 'minutes'); // Calculate the end time by adding the duration
+    
+            booking.selesai = endMoment.format('HH:mm:ss'); // Assign the calculated end time to the 'selesai' field
+
             Booking.create(booking)
             .then((data) => {
-                res.send(data);
+                res.send({
+                    data : data,
+                    message: 'Successfully booked!',
+                });
             })
+            .catch((err) => {
+                console.log(err);
+                res.status(500).send({
+                    message: 'Error creating booking',
+                });
+            });
         }
     })
-    //Save Booking in the database
+    .catch((err) => {
+        console.log(err);
+        res.status(500).send({
+          message: 'Error creating booking',
+        });
+    });
     
 };
 
