@@ -79,7 +79,6 @@ exports.countPost = (req, res) => {
         })
 };
 
-// Count Post
 exports.getBooking = async (req, res) => {
   const { tgl_kelas, page, perPage } = req.query;
 
@@ -101,7 +100,7 @@ exports.getBooking = async (req, res) => {
 
   Booking.findAll({
     where: filter,
-    attributes: ['id', 'user_group', 'teacherId', 'roomId', 'status', 'tgl_kelas','jam_booking','durasi','selesai'],
+    attributes: ['id', 'user_group', 'teacherId', 'roomId', 'instrumentId', 'status','jenis_kelas','tgl_kelas','jam_booking','durasi','selesai'],
     offset,
     limit,
     include: [
@@ -112,34 +111,38 @@ exports.getBooking = async (req, res) => {
       {
         model: Teacher,
         attributes: ['nama_pengajar'],
-      }
-      // {
-      //   model: User,
-      //   attributes: ['name'],
-      // },
-      // {
-      //   model: Instrument,
-      //   attributes: ['nama_instrument'],
-      // },
+      },
+      {
+        model: Instrument,
+        attributes: ['nama_instrument'],
+      },
     ],
   })
   .then((bookings) => {
     // Group bookings by room names
     const groupedBookings = [];
-    const roomsMap = {};
 
     bookings.forEach((booking) => {
       const roomName = booking.room ? booking.room.nama_ruang : 'Unknown Room';
-      const roomIndex = roomsMap[roomName];
 
-      if (roomIndex === undefined) {
-        roomsMap[roomName] = groupedBookings.length;
+      // Extract the roomId from the booking object
+      const roomId = booking.roomId;
+
+      // Remove the roomId from the booking object
+      const bookingData = booking.get();
+      delete bookingData.roomId;
+
+      // Check if the room already exists in groupedBookings
+      const existingRoom = groupedBookings.find((room) => room.roomName === roomName);
+
+      if (existingRoom) {
+        existingRoom.booking.push(bookingData);
+      } else {
         groupedBookings.push({
           roomName: roomName,
-          booking: [booking.get()],
+          roomId: roomId, // Add the roomId to the main level
+          booking: [bookingData],
         });
-      } else {
-        groupedBookings[roomIndex].booking.push(booking.get());
       }
     });
 
@@ -150,6 +153,6 @@ exports.getBooking = async (req, res) => {
   .catch((err) => {
     res.status(500).json({ message: `Failed to fetch booking data: ${err.message}` });
   });
-  
 };
+
 

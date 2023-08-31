@@ -12,6 +12,9 @@ module.exports = app => {
     // Get Booking By Id
     router.get("/:id", booking.findById);
 
+    // Get Booking List By Event Time
+    router.get("/eventTime/:event", booking.findByEventTime);
+
     // Create booking 
     router.post("/", booking.create);
 

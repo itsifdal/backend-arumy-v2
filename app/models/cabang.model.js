@@ -1,21 +1,16 @@
 module.exports = (sequelize, Sequelize) => {
-    const Room = sequelize.define("room", {
+    const Cabang = sequelize.define("cabang", {
         id:{
             type: Sequelize.INTEGER,
             autoIncrement: true,
             primaryKey: true
         },
-        nama_ruang: {
+        nama_cabang: {
             type: Sequelize.STRING(50)
-        },
-        cabangId: {
-            type: Sequelize.INTEGER,
-            allowNull: true,
-            defaultValue: null
         },
     },{
         timestamps: false, // Disable automatic timestamps for this model
     });
 
-    return Room;
+    return Cabang;
 }

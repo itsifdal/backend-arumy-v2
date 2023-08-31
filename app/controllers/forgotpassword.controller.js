@@ -33,7 +33,7 @@ exports.sendemailrecover = (req, res) => {
           });
         });
     } else {
-      res.send({
+      res.status(404).send({
         message: 'Email tidak ditemukan',
       });
     }
@@ -62,7 +62,7 @@ exports.sendEmail = (email, token) => {
     from: 'info@arumy.quatroacademy.com',
     to: email,
     subject: 'Reset Password Link - Booking Room',
-    html: `<p>Anda meminta link reset password, klik <a href=http://localhost:3000/resetpassword/${token}>link</a> reset password <br>LDC Dev</p>`,
+    html: `<p>Anda meminta link reset password, klik <a href=https://arumy.quatroacademy.com/resetpassword/${token}>link</a> reset password <br>LDC Dev</p>`,
   };
   transporter.sendMail(mailOptions, function (error, info) {
     if (error) {
@@ -72,29 +72,3 @@ exports.sendEmail = (email, token) => {
     }
   });
 };
-
-// exports.sendEmail = (email, token) => {
-//   var transporter = nodemailer.createTransport({
-//     host: 'smtp.gmail.com',
-//     port: 465,
-//     secure: true,
-//     auth: {
-//       user: 'ifdaltry@gmail.com', // Your email id
-//       pass: 'foubyffriemictro', // Your password
-//     },
-//   });
-//   var mailOptions = {
-//     from: 'ifdaltry@gmail.com',
-//     to: email,
-//     subject: 'Reset Password Link - Booking Room',
-//     html: `<p>Anda meminta link reset password, klik <a href=https://arumy.quatroacademy.com/ResetPassword/${token}>link</a> reset password <br>LDC Dev</p>`,
-//   };
-//   transporter.sendMail(mailOptions, function (error, info) {
-//     if (error) {
-//       console.log(error);
-//     } else {
-//       console.log('Email sent: ' + info.response);
-//     }
-//   });
-// };
-

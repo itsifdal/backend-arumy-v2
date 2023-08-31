@@ -41,7 +41,7 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: null
         },
         status: {
-            type: Sequelize.ENUM('confirmed', 'pending', 'cancel'),
+            type: Sequelize.ENUM('konfirmasi', 'pending', 'batal','ijin','kadaluarsa'),
             allowNull: false,
             defaultValue: 'pending' // Set the default value to 'pending'
         },
