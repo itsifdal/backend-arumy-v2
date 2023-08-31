@@ -1,14 +1,48 @@
 const db = require("../models");
 const Teacher = db.teachers;
+const Booking = db.bookings;
+const { Sequelize } = require('sequelize');
+
 
 // Retrieve all teachers from the database.
 exports.findAll = (req, res) => {
-    Teacher.findAll()
-        .then((data) => {
-            res.send(data);
-        }).catch((error) => {
-            res.status(500).json({ message: 'Tidak berhasil menampilkan data teacher' });
+
+    const { page, perPage } = req.query;
+
+    // Parse page and perPage parameters and provide default values if not present
+    const pageNumber   = parseInt(page) || 1;
+    const itemsPerPage = parseInt(perPage) || 10;
+
+    // Calculate offset and limit for pagination
+    const offset = (pageNumber - 1) * itemsPerPage;
+    const limit  = itemsPerPage;
+
+    Teacher.findAndCountAll({
+        offset,
+        limit,
+        order: [['nama_pengajar', 'ASC']] // Add ORDER BY nama_pengajar ASC clause here
+    })
+    .then((data) => {
+        const totalRecords = data.count;
+        const totalPages = Math.ceil(totalRecords / itemsPerPage);
+
+        const pagination = {
+            total_records: totalRecords,
+            current_page: pageNumber,
+            total_pages: totalPages,
+            next_page: pageNumber < totalPages ? pageNumber + 1 : null,
+            prev_page: pageNumber > 1 ? pageNumber - 1 : null
+        };
+
+        res.send({
+            data: data.rows,
+            pagination: pagination
         });
+    }).catch((err) => {
+        res.status(500).send({
+            message: `gagal menampilkan data teacher, ${err}`
+        });
+    });
 };
 
 // Find a single teacher with an id
@@ -23,6 +57,25 @@ exports.findOne = (req, res) => {
                 message: "Tidak berhasil menampilkan data teacher dengan id => " + id
             });
         });
+};
+
+// Find a single teacher with an id
+exports.countTeachHours = (req, res) => {
+    const id = req.params.id;
+
+    Booking.findAll({
+        attributes: [
+            'teacherId', 
+            [Sequelize.fn('SUM', Sequelize.col('durasi')), 'total_hour'],
+        ],
+        where: { teacherId: id, status: 'pending', }
+    })
+    .then((data) => {
+        res.send({data : data});
+    })
+    .catch((err) => {
+        res.status(500).send({ message: err });
+    });
 };
 
 // Create and Save a new teacher

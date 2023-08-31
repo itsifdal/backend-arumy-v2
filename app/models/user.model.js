@@ -5,14 +5,22 @@ module.exports = (sequelize, Sequelize) => {
             autoIncrement: true,
             primaryKey: true
         },
+        teacherId: {
+            type: Sequelize.INTEGER,
+            allowNull: true,
+            defaultValue: null
+        },
         name: {
-            type: Sequelize.STRING(15)
+            type: Sequelize.STRING(100),
+            unique: true
         },
         email: {
-            type: Sequelize.STRING(30)
+            type: Sequelize.STRING(30),
+            unique: true
         },
         password: {
-            type: Sequelize.STRING(100)
+            type: Sequelize.STRING(100),
+            unique: false
         },
         role: {
             type: Sequelize.ENUM('Admin', 'Reguler', 'Guru'),
@@ -20,7 +28,7 @@ module.exports = (sequelize, Sequelize) => {
             defaultValue: 'Reguler' // Set the default value to 'reguler user'
         },
         token: {
-            type: Sequelize.STRING(100)
+            type: Sequelize.TEXT
         },
         last_login: {
             type: Sequelize.DATE,

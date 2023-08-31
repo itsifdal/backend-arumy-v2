@@ -3,29 +3,17 @@ module.exports = app => {
 
     let router = require("express").Router();
 
-    // Get Booking List 
-    router.get("/", booking.list);
+    // Get Booking List By Filter
+    router.get("/", booking.getWithFilter);
 
+    // Retrieve posts by filtering : 
+    router.get("/dateRange", booking.findByDateRange);
+    
     // Get Booking By Id
     router.get("/:id", booking.findById);
 
-    // Get Booking By Code
-    router.get("/status/:status", booking.findByStatus);
-
-    // Get Booking By Code
-    router.get("/teacher/:teacherId", booking.findByTeacher);
-
-    // Get Booking By Code
-    router.get("/room/:roomId", booking.findByRoom);
-
-    // Retrieve post by date
-    router.get("/:rangeAwal/:rangeAkhir", booking.findByDate);
-    
-    // Retrieve posts by filtering
-    router.post("/Newfilter/default", booking.findByNewFilter);
-
-    // Retrieve posts by filtering
-    router.post("/filter/default", booking.findByFilter);
+    // Get Booking List By Event Time
+    router.get("/eventTime/:event", booking.findByEventTime);
 
     // Create booking 
     router.post("/", booking.create);

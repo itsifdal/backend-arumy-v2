@@ -25,6 +25,7 @@ db.posts    = require("./post.model.js")(sequelize, Sequelize);
 
 db.instruments  = require("./instrument.model.js")(sequelize, Sequelize);
 db.rooms    = require("./room.model.js")(sequelize, Sequelize);
+db.cabangs  = require("./cabang.model.js")(sequelize, Sequelize);
 db.pakets   = require("./paket.model.js")(sequelize, Sequelize);
 db.teachers = require("./teacher.model.js")(sequelize, Sequelize);
 db.students = require("./student.model.js")(sequelize, Sequelize);

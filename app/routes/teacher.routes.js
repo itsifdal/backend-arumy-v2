@@ -6,6 +6,9 @@ module.exports = app => {
     // Retrieve all teachers
     router.get("/", teacher.findAll);
 
+    // Total teach hours
+    router.get("/teachHour/:id", teacher.countTeachHours);
+
     // Create a new teacher
     router.post("/", teacher.create);
     
