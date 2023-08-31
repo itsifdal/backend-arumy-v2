@@ -54,8 +54,8 @@ exports.sendEmail = (email, token) => {
     port: 465, // Replace with the SMTP port of your hosting provider
     secure: true,
     auth: {
-      user: 'info@arumy.quatroacademy.com', // Replace with the username (email) of your hosting provider
-      pass: '8Vp0?DF(6Y6F', // Replace with the password of your hosting provider
+      user: '', // Replace with the username (email) of your hosting provider
+      pass: '', // Replace with the password of your hosting provider
     },
   });
   var mailOptions = {
