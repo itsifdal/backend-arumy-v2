@@ -1,8 +1,8 @@
 module.exports = {
     HOST: "localhost",
     USER: "root",
-    PASSWORD: "ifdalroam",
-    DB: "arumy_db",
+    PASSWORD: "",
+    DB: "",
     dialect: "mysql",
     pool: {
         max: 5, // maximum number of connection in pool
