@@ -6,6 +6,9 @@ module.exports = app => {
     // Retrieve all teachers
     router.get("/", teacher.findAll);
 
+    // Retrieve students bookings hours
+    router.get("/dashboard/:id", teacher.dashboard);
+
     // Total teach hours
     router.get("/teachHour/:id", teacher.countTeachHours);
 

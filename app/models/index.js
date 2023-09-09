@@ -1,17 +1,16 @@
-const dbConfig = require("../config/db.config.js");
+const Sequelize = require('sequelize');
+const dbConfig = require('../config/db.config.js');
 
-const Sequelize = require("sequelize");
-const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
-    host: dbConfig.HOST,
-    dialect: dbConfig.dialect,
-    operatorAliases: false,
-
+// Create a new Sequelize instance from the database configuration
+const sequelize = new Sequelize('arumy_db', 'root', '31082023', {
+    host: 'localhost',
+    dialect: 'mysql',
     pool: {
-        max: dbConfig.pool.max,
-        min: dbConfig.pool.min,
-        acquire: dbConfig.pool.acquire,
-        idle: dbConfig.pool.idle
-    }
+        max: 5, // maximum number of connections in the pool
+        min: 0, // minimum number of connections in the pool
+        acquire: 30000, // maximum time, in milliseconds, that the pool will try to get a connection before throwing an error
+        idle: 10000, // maximum time, in milliseconds, that a connection can be idle before being released
+    },
 });
 
 const db = {};

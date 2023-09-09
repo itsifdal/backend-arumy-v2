@@ -5,6 +5,8 @@ const Room    = db.rooms;
 const Teacher = db.teachers;
 const Instrument = db.instruments;
 const { Sequelize, Op } = require("sequelize");
+const cron = require('node-cron');
+
 
 const moment = require('moment');
 
@@ -21,6 +23,36 @@ Booking.belongsTo(Teacher);
 Instrument.hasMany(Booking);
 Booking.belongsTo(Instrument);
 //-- End
+
+const updateExpiredBookings = () => {
+    const currentDate = new Date();
+  
+    // Query untuk memperbarui status booking yang sudah kadaluarsa
+    // Sesuaikan dengan aturan bisnis dan struktur tabel Anda
+    const query = `
+      UPDATE bookings
+      SET status = 'kadaluarsa'
+      WHERE tgl_kelas < ? OR (tgl_kelas = ? AND jam_booking < ?)
+      AND status IN ('pending')
+    `;
+  
+    // Eksekusi query dengan parameter tanggal dan waktu sekarang
+    // Anda perlu menyesuaikan ini dengan cara Anda berinteraksi dengan database
+    db.query(query, [currentDate, currentDate, currentDate], (err, result) => {
+      if (err) {
+        console.error('Gagal memperbarui status booking kadaluarsa:', err);
+      } else {
+        console.log(`Berhasil memperbarui ${result.affectedRows} booking menjadi kadaluarsa.`);
+      }
+    });
+};
+
+// Menjalankan fungsi updateExpiredBookings setiap jam 1
+cron.schedule('0 * * * *', () => {
+    console.log('Menjalankan pengecekan status booking kadaluarsa...');
+    updateExpiredBookings();
+});
+
 
 // Return Booking Page.
 exports.list = (req, res) => {
@@ -60,7 +92,7 @@ exports.getWithFilter = (req, res) => {
     const itemsPerPage = parseInt(perPage) || 10;
 
     // Calculate offset and limit for pagination
-    const offset = (pageNumber - 1) * itemsPerPage;
+    const offset = (pageNumber -1) * itemsPerPage;
     const limit = itemsPerPage;
 
     // Build the filter object dynamically, ignoring null parameters
@@ -70,7 +102,8 @@ exports.getWithFilter = (req, res) => {
         roomId: roomId || { [Op.ne]: null },
         teacherId: teacherId || { [Op.ne]: null },
         tgl_kelas: tgl_kelas || { [Op.ne]: null },
-        jam_booking: jam_booking ? { [Op.gte]: jam_booking } : { [Op.ne]: null }
+        jam_booking: jam_booking ? { [Op.gte]: jam_booking } : { [Op.ne]: null },
+        user_group: { [Op.substring]: `"id":${studentId},` },
     };
 
     Booking.findAndCountAll({
@@ -92,10 +125,10 @@ exports.getWithFilter = (req, res) => {
     })
     .then((data) => {
         
-        const totalRecords = data.count;
-        const totalPages = Math.ceil(totalRecords / itemsPerPage);
+        let totalRecords = data.count;
+        let totalPages = Math.ceil(totalRecords / itemsPerPage);
 
-        const pagination = {
+        let pagination = {
             total_records: totalRecords,
             current_page: pageNumber,
             total_pages: totalPages,
@@ -103,42 +136,10 @@ exports.getWithFilter = (req, res) => {
             prev_page: pageNumber > 1 ? pageNumber - 1 : null
         };
 
-        // res.send({
-        //     data: data.rows,
-        //     pagination: pagination
-        // });
-
-        if (studentId === null || studentId === undefined || studentId === "") {
-
-            res.send({  
-                data : data.rows,
-                pagination: pagination
-            });
-
-        } else {
-
-            const filteredData = data.rows.filter((booking) => {
-                if (booking.user_group) {
-
-                    // Parse the user_group array
-                    const userGroup = JSON.parse(booking.user_group);
-            
-                    // Check if any student's id matches studentId
-                    return userGroup.some((student) => student.id === parseInt(studentId));
-
-                }else{
-
-                    return false;
-
-                }
-            });
-        
-            res.send({  
-                data : filteredData,
-                pagination: pagination
-            });
-        }
-        
+        res.send({  
+            data : data.rows,
+            pagination: pagination
+        });
     })
     .catch((err) => {
         res.status(500).send({
@@ -522,3 +523,5 @@ exports.delete = (req, res) => {
         })
     });
 };  
+
+
