@@ -7,15 +7,28 @@ module.exports = (sequelize, Sequelize) => {
         },
         nama_murid: {
             type: Sequelize.STRING(50),
+            allowNull: true,
+            defaultValue: null
         },
         nama_wali: {
             type: Sequelize.STRING(50),
+            allowNull: true,
+            defaultValue: null
         },
         nomor_va: {
             type: Sequelize.STRING(30),
+            allowNull: true,
+            defaultValue: null
         },
         telepon : {
-            type : Sequelize.STRING(15)
+            type : Sequelize.STRING(15),
+            allowNull: true,
+            defaultValue: null
+        },
+        tgl_lahir : {
+            type : Sequelize.DATEONLY,
+            allowNull: true,
+            defaultValue: null
         }
     },{
         timestamps: false, // Disable automatic timestamps for this model
