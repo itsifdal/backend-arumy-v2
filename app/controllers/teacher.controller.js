@@ -47,134 +47,183 @@ exports.findAll = (req, res) => {
     });
 };
 
+// exports.dashboard = (req, res) => {
+//   // Query untuk mengambil data dan mengurai JSON
+//   const id = req.params.id;
+//   const { tglAwal, tglAkhir } = req.query;
+
+//   const query = `
+//   SELECT
+//       JSON_UNQUOTE(JSON_EXTRACT(user_group, '$[*].id')) AS studentId,
+//       SUM(CASE WHEN jenis_kelas = 'privat' AND status IN ('batal', 'konfirmasi') THEN durasi ELSE 0 END) AS privateDuration,
+//       SUM(CASE WHEN jenis_kelas = 'privat' AND status = 'pending' THEN durasi ELSE 0 END) AS privatePendingDuration,
+//       SUM(CASE WHEN jenis_kelas = 'privat' AND status = 'kadaluarsa' THEN durasi ELSE 0 END) AS privateExpiredDuration,
+//       GROUP_CONCAT(IF(jenis_kelas = 'group', '1', '0')) AS groupCounts
+//     FROM bookings
+//     WHERE teacherId = '${id}' 
+//       AND status IN ('batal', 'konfirmasi', 'pending', 'kadaluarsa')
+//       AND jenis_kelas IN ('privat', 'group')
+//       AND tgl_kelas BETWEEN '${tglAwal}' AND '${tglAkhir}'
+//     GROUP BY studentId;
+//   `;
+
+
+//   sequelize.query(query, { type: sequelize.QueryTypes.SELECT })
+//   .then(data => {
+//   // Memperbaiki nilai studentName dan mengonversi groupCount ke angka
+//   const resultData = {};
+
+//   data.forEach(item => {
+//     const studentIds = JSON.parse(item.studentId); // Mengurai studentId dari JSON
+  
+//     studentIds.forEach(studentId => {
+//       if (!resultData[studentId]) {
+//         resultData[studentId] = {
+//           studentId: studentId,
+//           studentName: '', // Inisialisasi nama kosong
+//           privateDuration: 0,
+//           privatePendingDuration: 0, // Inisialisasi durasi pending
+//           privateExpiredDuration: 0, // Inisialisasi durasi kadaluarsa
+//           groupCount: 0,
+//         };
+//       }
+  
+//       // Memperbarui durasi berdasarkan jenis status
+//       resultData[studentId].privateDuration += item.privateDuration;
+//       resultData[studentId].privatePendingDuration += item.privatePendingDuration;
+//       resultData[studentId].privateExpiredDuration += item.privateExpiredDuration;
+  
+//       // Mengubah groupCounts menjadi angka dan menjumlahkannya
+//       resultData[studentId].groupCount += item.groupCounts
+//         .split(',')
+//         .map(Number)
+//         .reduce((a, b) => a + b, 0);
+//     });
+//   });
+  
+
+//   // Mengambil nama murid dari tabel students
+//   const studentIdsArray = Object.keys(resultData);
+//   const studentPromises = studentIdsArray.map(studentId => {
+//     return Student.findByPk(studentId)
+//       .then(student => {
+//         if (student) {
+//           resultData[studentId].studentName = student.nama_murid;
+//         }
+//       });
+//   });
+
+//   // Menunggu semua promise selesai
+//   Promise.all(studentPromises)
+//     .then(() => {
+//       // Mengonversi groupCount ke angka
+//       const finalData = Object.values(resultData);
+
+//       res.send({ data: finalData });
+//     })
+//     .catch(err => {
+//       res.status(500).send({
+//         message: `Gagal menampilkan data durasi booking murid, ${err}`
+//       });
+//     });
+//   })
+//   .catch(err => {
+//     res.status(500).send({
+//       message: `Gagal menampilkan data durasi booking murid, ${err}`
+//     });
+//   });
+// };
+
 exports.dashboard = (req, res) => {
     // Query untuk mengambil data dan mengurai JSON
     const id = req.params.id;
-
+    const { tglAwal, tglAkhir } = req.query;
+  
     const query = `
-      SELECT
+    SELECT
         JSON_UNQUOTE(JSON_EXTRACT(user_group, '$[*].id')) AS studentId,
-        IFNULL(SUM(CASE WHEN jenis_kelas = 'privat' THEN durasi ELSE 0 END), 0) AS privateDuration,
+        SUM(CASE WHEN jenis_kelas = 'privat' AND status IN ('batal', 'konfirmasi') THEN durasi ELSE 0 END) AS privateDuration,
+        SUM(CASE WHEN jenis_kelas = 'privat' AND status = 'pending' THEN durasi ELSE 0 END) AS privatePendingDuration,
+        SUM(CASE WHEN jenis_kelas = 'privat' AND status = 'kadaluarsa' THEN durasi ELSE 0 END) AS privateExpiredDuration,
+        SUM(CASE WHEN jenis_kelas = 'group' AND status = 'pending' THEN durasi ELSE 0 END) AS groupPendingDuration,
+        SUM(CASE WHEN jenis_kelas = 'group' AND status = 'kadaluarsa' THEN durasi ELSE 0 END) AS groupExpiredDuration,
         GROUP_CONCAT(IF(jenis_kelas = 'group', '1', '0')) AS groupCounts
       FROM bookings
       WHERE teacherId = '${id}' 
-        AND status IN ('batal', 'konfirmasi')
+        AND status IN ('batal', 'konfirmasi', 'pending', 'kadaluarsa')
         AND jenis_kelas IN ('privat', 'group')
+        AND tgl_kelas BETWEEN '${tglAwal}' AND '${tglAkhir}'
       GROUP BY studentId;
     `;
   
     sequelize.query(query, { type: sequelize.QueryTypes.SELECT })
-  .then(data => {
-    // Memperbaiki nilai studentName dan mengonversi groupCount ke angka
-    const resultData = {};
-
-    data.forEach(item => {
-      const studentIds = JSON.parse(item.studentId); // Mengurai studentId dari JSON
-      studentIds.forEach(studentId => {
-        if (!resultData[studentId]) {
-          resultData[studentId] = {
-            studentId: studentId,
-            studentName: '', // Inisialisasi nama kosong
-            privateDuration: 0,
-            groupCount: 0,
-          };
-        }
-        // Gabungkan privateDuration dan groupCount
-        resultData[studentId].privateDuration += item.privateDuration;
-        // Mengubah groupCounts menjadi angka dan menjumlahkannya
-        resultData[studentId].groupCount += item.groupCounts
-          .split(',')
-          .map(Number)
-          .reduce((a, b) => a + b, 0);
-      });
-    });
-
-    // Mengambil nama murid dari tabel students
-    const studentIdsArray = Object.keys(resultData);
-    const studentPromises = studentIdsArray.map(studentId => {
-      return Student.findByPk(studentId)
-        .then(student => {
-          if (student) {
-            resultData[studentId].studentName = student.nama_murid;
+    .then(data => {
+      // Memperbaiki nilai studentName dan mengonversi groupCount ke angka
+      const resultData = {};
+  
+      data.forEach(item => {
+        const studentIds = JSON.parse(item.studentId); // Mengurai studentId dari JSON
+  
+        studentIds.forEach(studentId => {
+          if (!resultData[studentId]) {
+            resultData[studentId] = {
+              studentId: studentId,
+              studentName: '', // Inisialisasi nama kosong
+              privateDuration: 0,
+              privatePendingDuration: 0, // Inisialisasi durasi pending
+              privateExpiredDuration: 0, // Inisialisasi durasi kadaluarsa
+              groupCount: 0,
+              groupPendingDuration: 0, // Inisialisasi durasi pending untuk grup
+              groupExpiredDuration: 0, // Inisialisasi durasi kadaluarsa untuk grup
+            };
           }
-        });
-    });
-
-    // Menunggu semua promise selesai
-    Promise.all(studentPromises)
-      .then(() => {
-        // Mengonversi groupCount ke angka
-        const finalData = Object.values(resultData);
-
-        res.send({ data: finalData });
-      })
-      .catch(err => {
-        res.status(500).send({
-          message: `Gagal menampilkan data durasi booking murid, ${err}`
+  
+          // Memperbarui durasi berdasarkan jenis status
+          resultData[studentId].privateDuration += item.privateDuration;
+          resultData[studentId].privatePendingDuration += item.privatePendingDuration;
+          resultData[studentId].privateExpiredDuration += item.privateExpiredDuration;
+          resultData[studentId].groupCount += item.groupCounts
+            .split(',')
+            .map(Number)
+            .reduce((a, b) => a + b, 0);
+          
+          // Memperbarui durasi grup berdasarkan jenis status
+          resultData[studentId].groupPendingDuration += item.groupPendingDuration;
+          resultData[studentId].groupExpiredDuration += item.groupExpiredDuration;
         });
       });
-  })
-  .catch(err => {
-    res.status(500).send({
-      message: `Gagal menampilkan data durasi booking murid, ${err}`
+  
+      // Mengambil nama murid dari tabel students
+      const studentIdsArray = Object.keys(resultData);
+      const studentPromises = studentIdsArray.map(studentId => {
+        return Student.findByPk(studentId)
+          .then(student => {
+            if (student) {
+              resultData[studentId].studentName = student.nama_murid;
+            }
+          });
+      });
+  
+      // Menunggu semua promise selesai
+      Promise.all(studentPromises)
+        .then(() => {
+          // Mengonversi groupCount ke angka
+          const finalData = Object.values(resultData);
+  
+          res.send({ data: finalData });
+        })
+        .catch(err => {
+          res.status(500).send({
+            message: `Gagal menampilkan data durasi booking murid, ${err}`
+          });
+        });
+    })
+    .catch(err => {
+      res.status(500).send({
+        message: `Gagal menampilkan data durasi booking murid, ${err}`
+      });
     });
-  });
-
-
-
 };
-
-
-// Retrieve students bookings hours
-// exports.dashboard = (req, res) => {
-//     // Query untuk mengambil data dan mengurai JSON
-//     const query = `
-//       SELECT
-//         JSON_UNQUOTE(JSON_EXTRACT(user_group, '$[*].id')) AS studentId,
-//         JSON_UNQUOTE(JSON_EXTRACT(user_group, '$[*].nama_murid')) AS studentNames,
-//         IFNULL(SUM(CASE WHEN jenis_kelas = 'privat' THEN durasi ELSE 0 END), 0) AS privateDuration,
-//         IFNULL(SUM(CASE WHEN jenis_kelas = 'group' THEN 1 ELSE 0 END), 0) AS groupCount
-//       FROM bookings
-//       WHERE teacherId = '3' 
-//         AND status IN ('pending', 'konfirmasi')
-//         AND jenis_kelas IN ('privat', 'group')
-//       GROUP BY studentId, studentNames;
-//     `;
-  
-//     sequelize.query(query, { type: sequelize.QueryTypes.SELECT })
-//       .then(data => {
-//         // Manipulasi data untuk menggabungkan berdasarkan studentId dan studentNames
-//         const groupedData = {};
-//         data.forEach(item => {
-//           const studentIds = JSON.parse(item.studentId); // Mengurai studentId dari JSON
-//           const studentNames = JSON.parse(item.studentNames); // Mengurai nama murid dari JSON
-  
-//           studentIds.forEach(studentId => {
-//             if (!groupedData[studentId]) {
-//               groupedData[studentId] = {
-//                 studentId: String(studentId), // Mengonversi ke string
-//                 studentName: studentNames[0], // Mengambil nama pertama
-//                 privateDuration: item.privateDuration,
-//                 groupCount: item.groupCount,
-//               };
-//             } else {
-//               // Gabungkan privateDuration jika studentId sama
-//               groupedData[studentId].privateDuration += item.privateDuration;
-//             }
-//           });
-//         });
-  
-//         // Konversi data yang telah digroup ke dalam array
-//         const finalData = Object.values(groupedData);
-  
-//         res.send({ data: finalData });
-//       })
-//       .catch(err => {
-//         res.status(500).send({
-//           message: `Gagal menampilkan data durasi booking murid, ${err}`
-//         });
-//       });
-// };
   
 
 // Find a single teacher with an id

@@ -5,6 +5,7 @@ const Room    = db.rooms;
 const Teacher = db.teachers;
 const Instrument = db.instruments;
 const { Sequelize, Op } = require("sequelize");
+const sequelize = require('../config/db.config');
 const cron = require('node-cron');
 
 
@@ -25,33 +26,41 @@ Booking.belongsTo(Instrument);
 //-- End
 
 const updateExpiredBookings = () => {
-    const currentDate = new Date();
+    // Mengatur zona waktu ke WITA
+    const currentDate   = moment().tz('Asia/Makassar'); // 'Asia/Makassar' adalah zona waktu WITA
+    const formattedDate = currentDate.format('YYYY-MM-DD');
+  
+    // Mengambil hanya bagian waktu (HH:mm:ss) dari currentDate
+    const currentTime   = currentDate.format('HH:mm:ss');
   
     // Query untuk memperbarui status booking yang sudah kadaluarsa
-    // Sesuaikan dengan aturan bisnis dan struktur tabel Anda
     const query = `
-      UPDATE bookings
-      SET status = 'kadaluarsa'
-      WHERE tgl_kelas < ? OR (tgl_kelas = ? AND jam_booking < ?)
-      AND status IN ('pending')
+    UPDATE bookings
+    SET status = 'kadaluarsa'
+    WHERE tgl_kelas < :formattedDate 
+    AND status = 'pending'
+    OR (tgl_kelas = :formattedDate AND jam_booking < :currentTime)
     `;
-  
-    // Eksekusi query dengan parameter tanggal dan waktu sekarang
-    // Anda perlu menyesuaikan ini dengan cara Anda berinteraksi dengan database
-    db.query(query, [currentDate, currentDate, currentDate], (err, result) => {
-      if (err) {
+
+    sequelize.query(query, {
+        replacements: {
+            formattedDate: formattedDate,
+            currentTime: currentTime
+    }, type: sequelize.QueryTypes.UPDATE })
+    .then(result => {
+        console.log(`Berhasil memperbarui ${result[1]} booking menjadi kadaluarsa.`);
+    })
+    .catch(err => {
         console.error('Gagal memperbarui status booking kadaluarsa:', err);
-      } else {
-        console.log(`Berhasil memperbarui ${result.affectedRows} booking menjadi kadaluarsa.`);
-      }
     });
 };
 
-// Menjalankan fungsi updateExpiredBookings setiap jam 1
+// Menjalankan fungsi updateExpiredBookings setiap menit
 cron.schedule('0 * * * *', () => {
     console.log('Menjalankan pengecekan status booking kadaluarsa...');
     updateExpiredBookings();
 });
+
 
 
 // Return Booking Page.
@@ -88,12 +97,26 @@ exports.getWithFilter = (req, res) => {
     const { status, bookingId, roomId, teacherId, studentId, tgl_kelas, jam_booking, page, perPage } = req.query;
 
     // Parse page and perPage parameters and provide default values if not present
-    const pageNumber = parseInt(page) || 1;
+    const pageNumber   = parseInt(page) || 1;
     const itemsPerPage = parseInt(perPage) || 10;
 
     // Calculate offset and limit for pagination
     const offset = (pageNumber -1) * itemsPerPage;
     const limit = itemsPerPage;
+
+    // Define default values for sort and sort_by
+    let sort = "DESC"; // Default sorting direction
+    let sort_by = "id"; // Default sorting column
+
+    // Check if sort parameter is provided and not null
+    if (req.query.sort !== undefined && req.query.sort !== null) {
+        sort = req.query.sort; // Use the provided sort value
+    }
+
+    // Check if sort_by parameter is provided and not null
+    if (req.query.sort_by !== undefined && req.query.sort_by !== null) {
+        sort_by = req.query.sort_by; // Use the provided sort_by value
+    }
 
     // Build the filter object dynamically, ignoring null parameters
     const filter = {
@@ -102,16 +125,20 @@ exports.getWithFilter = (req, res) => {
         roomId: roomId || { [Op.ne]: null },
         teacherId: teacherId || { [Op.ne]: null },
         tgl_kelas: tgl_kelas || { [Op.ne]: null },
-        jam_booking: jam_booking ? { [Op.gte]: jam_booking } : { [Op.ne]: null },
-        user_group: { [Op.substring]: `"id":${studentId},` },
+        jam_booking: jam_booking ? { [Op.gte]: jam_booking } : { [Op.ne]: null }
     };
+
+    // Only add user_group filter if studentId is not null
+    if (studentId !== null && studentId !== undefined && studentId !== '') {
+        filter.user_group = { [Op.substring]: `"id":${studentId},` };
+    }
 
     Booking.findAndCountAll({
         where: filter,
         attributes: ['id', 'user_group', 'teacherId', 'roomId', 'status', 'tgl_kelas', 'jam_booking', 'durasi', 'selesai'],
         offset,
         limit,
-        order: [['id', 'DESC']],
+        order: [[sort_by, sort]],
         include: [
             {
                 model: Room,
@@ -136,6 +163,8 @@ exports.getWithFilter = (req, res) => {
             prev_page: pageNumber > 1 ? pageNumber - 1 : null
         };
 
+        //console.log(studentId);
+
         res.send({  
             data : data.rows,
             pagination: pagination
@@ -143,7 +172,10 @@ exports.getWithFilter = (req, res) => {
     })
     .catch((err) => {
         res.status(500).send({
-            message: `Terjadi kesalahan saat menampilkan data booking, ${err.message}`
+            message: `Terjadi kesalahan saat menampilkan data booking, ${err.message}`,
+            query : req.query,
+            filter : filter
+
         });
     });
 };

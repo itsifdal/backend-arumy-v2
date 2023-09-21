@@ -64,7 +64,8 @@ exports.create = (req, res) => {
                 nama_murid: req.body.nama_murid,
                 nama_wali: req.body.nama_wali,
                 nomor_va: req.body.nomor_va,
-                telepon: req.body.telepon
+                telepon: req.body.telepon,
+                tgl_lahir: req.body.tgl_lahir
             };
 
             // Save User in the database
