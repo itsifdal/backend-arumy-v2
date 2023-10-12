@@ -30,23 +30,19 @@ const updateExpiredBookings = () => {
     const currentDate   = moment().tz('Asia/Makassar'); // 'Asia/Makassar' adalah zona waktu WITA
     const formattedDate = currentDate.format('YYYY-MM-DD');
   
-    // Mengambil hanya bagian waktu (HH:mm:ss) dari currentDate
-    const currentTime   = currentDate.format('HH:mm:ss');
-  
     // Query untuk memperbarui status booking yang sudah kadaluarsa
     const query = `
-    UPDATE bookings
-    SET status = 'kadaluarsa'
-    WHERE tgl_kelas < :formattedDate 
-    AND status = 'pending'
-    OR (tgl_kelas = :formattedDate AND jam_booking < :currentTime)
+        UPDATE bookings
+        SET status = 'kadaluarsa'
+        WHERE status = 'pending' AND tgl_kelas < :formattedDate 
     `;
 
     sequelize.query(query, {
         replacements: {
-            formattedDate: formattedDate,
-            currentTime: currentTime
-    }, type: sequelize.QueryTypes.UPDATE })
+            formattedDate: formattedDate
+        }, 
+        type: sequelize.QueryTypes.UPDATE 
+    })
     .then(result => {
         console.log(`Berhasil memperbarui ${result[1]} booking menjadi kadaluarsa.`);
     })
@@ -55,46 +51,40 @@ const updateExpiredBookings = () => {
     });
 };
 
-// Menjalankan fungsi updateExpiredBookings setiap menit
-cron.schedule('0 * * * *', () => {
-    console.log('Menjalankan pengecekan status booking kadaluarsa...');
-    updateExpiredBookings();
-});
-
-
-
-// Return Booking Page.
-exports.list = (req, res) => {
-    Booking.findAll({
-        include: [
-            {
-                model: User,
-                attributes: ['name']
-            },
-            {
-                model: Room,
-                attributes: ['nama_ruang']
-            },
-            {
-                model: Teacher,
-                attributes: ['nama_pengajar']
-            },
-            {
-                model: Instrument,
-                attributes: ['nama_instrument']
-            }
-        ]
-    }).then((data) => {
-        res.send({
-            data : data
-        });
+const checkAndRunCronJob = async () => {
+    // Tambahkan logika kondisional untuk mengecek apakah ada booking pending yang harus diperbarui
+    const pendingBookings = await sequelize.query(`
+        SELECT COUNT(*) AS count
+        FROM bookings
+        WHERE status = 'pending' AND tgl_kelas < :formattedDate
+    `, {
+        replacements: {
+            formattedDate: formattedDate
+        },
+        type: sequelize.QueryTypes.SELECT
     });
-    
+
+    if (pendingBookings[0].count > 0) {
+        console.log('Menjalankan pengecekan status booking kadaluarsa...');
+        updateExpiredBookings();
+    } else {
+        console.log('Tidak ada booking pending yang perlu diperbarui.');
+    }
 };
+
+// Mengatur zona waktu ke WITA
+const currentDate   = moment().tz('Asia/Makassar'); // 'Asia/Makassar' adalah zona waktu WITA
+const formattedDate = currentDate.format('YYYY-MM-DD');
+
+// Menjalankan fungsi checkAndRunCronJob setiap 2 menit
+const cronjob = cron.schedule('8 1 * * *', checkAndRunCronJob);
+  
+cronjob.start();
+
 
 // Get Booking List 
 exports.getWithFilter = (req, res) => {
-    const { status, bookingId, roomId, teacherId, studentId, tgl_kelas, jam_booking, page, perPage } = req.query;
+    const { status, bookingId, roomId, teacherId, studentId, tgl_kelas, jam_booking, page, perPage, eventTime } = req.query;
 
     // Parse page and perPage parameters and provide default values if not present
     const pageNumber   = parseInt(page) || 1;
@@ -127,6 +117,35 @@ exports.getWithFilter = (req, res) => {
         tgl_kelas: tgl_kelas || { [Op.ne]: null },
         jam_booking: jam_booking ? { [Op.gte]: jam_booking } : { [Op.ne]: null }
     };
+
+    // Get Current Date and Time
+    // const currentDate    = new Date().toISOString().slice(0, 10);
+    // const timezoneOffset = 420; // GMT +8
+    // const currentTime    = new Date(Date.now() + timezoneOffset * 60 * 1000).toISOString().slice(11, 19);
+
+    const timezoneOffset = 8 * 60; // GMT +8 (dalam menit)
+    const currentDate = new Date(new Date().getTime() + timezoneOffset * 60 * 1000).toISOString().slice(0, 10);
+    const currentTime = new Date(new Date().getTime() + timezoneOffset * 60 * 1000).toISOString().slice(11, 19);
+
+
+    if (req.query.eventTime === 'upcoming') {
+        filter[Op.or] = [
+            { tgl_kelas: { [Op.gt]: currentDate } },
+            {
+                tgl_kelas: { [Op.eq]: currentDate },
+                jam_booking: { [Op.gt]: currentTime }
+            }
+        ];
+    } else if (req.query.eventTime === 'past') {
+        filter[Op.or] = [
+            { tgl_kelas: { [Op.lt]: currentDate } },
+            {
+                tgl_kelas: { [Op.eq]: currentDate },
+                jam_booking: { [Op.lt]: currentTime }
+            }
+        ];
+    }
+    
 
     // Only add user_group filter if studentId is not null
     if (studentId !== null && studentId !== undefined && studentId !== '') {
@@ -269,8 +288,16 @@ exports.findById = (req, res) => {
 
 //Find a single Booking with an id
 exports.findByEventTime = (req, res) => {
-    const { roomId, teacherId, studentId } = req.query;
+    const { roomId, teacherId, studentId, page, perPage } = req.query;
     const event = req.params.event;
+
+    // Parse page and perPage parameters and provide default values if not present
+    const pageNumber   = parseInt(page) || 1;
+    const itemsPerPage = parseInt(perPage) || 10;
+
+    // Calculate offset and limit for pagination
+    const offset = (pageNumber -1) * itemsPerPage;
+    const limit = itemsPerPage;
 
     // Build the filter object dynamically, ignoring null parameters
     const filter = {
@@ -292,8 +319,15 @@ exports.findByEventTime = (req, res) => {
         filter.jam_booking = { [Op.lt]: currentTime };
     }
 
-    Booking.findAll({
+    // Only add user_group filter if studentId is not null
+    if (studentId !== null && studentId !== undefined && studentId !== '') {
+        filter.user_group = { [Op.substring]: `"id":${studentId},` };
+    }
+
+    Booking.findAndCountAll({
         where: filter,
+        offset,
+        limit,
         include: [
             {
                 model: User,
@@ -314,31 +348,22 @@ exports.findByEventTime = (req, res) => {
         ]
     })
     .then((data) => {
-        if (data) {
-
-            const filteredData = data.filter((booking) => {
-                if (booking.user_group) {
-
-                    // Parse the user_group array
-                    const userGroup = JSON.parse(booking.user_group);
-            
-                    // Check if any student's id matches studentId
-                    return userGroup.some((student) => student.id === parseInt(studentId));
-
-                }else{
-
-                    return false;
-
-                }
-            });
         
-            res.send(filteredData);
+        let totalRecords = data.count;
+        let totalPages = Math.ceil(totalRecords / itemsPerPage);
 
-        } else {
-            res.status(404).send({
-                message: `Booking data not found.`
-            });
-        }
+        let pagination = {
+            total_records: totalRecords,
+            current_page: pageNumber,
+            total_pages: totalPages,
+            next_page: pageNumber < totalPages ? pageNumber + 1 : null,
+            prev_page: pageNumber > 1 ? pageNumber - 1 : null
+        };
+
+        res.send({  
+            data : data.rows,
+            pagination: pagination
+        });
     })
     .catch((err) => {
         res.status(500).send({
