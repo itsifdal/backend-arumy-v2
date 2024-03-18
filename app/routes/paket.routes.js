@@ -1,8 +1,11 @@
 module.exports = app => {
-    const paket = require("../controllers/paket.controller.js");
+    
+    let router  = require("express").Router();
 
-    let router = require("express").Router();
+    const paket = require("../controllers/paket.controller.js");    
+    const apiKeyMiddleware = require('../middlewares/apiKeyMiddleware');
 
+    /// Paket endpoints
     // Retrieve all pakets
     router.get("/", paket.findAll);
 
@@ -18,5 +21,6 @@ module.exports = app => {
     // Delete single paket
     router.delete("/:id", paket.delete);
 
-    app.use("/api/paket", router);
+    // Protect all paket endpoints
+    app.use('/api/paket', apiKeyMiddleware, router);
 }

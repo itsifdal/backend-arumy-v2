@@ -1,7 +1,9 @@
 module.exports = app => {
-    const login = require("../controllers/login.controller.js");
 
     let router = require("express").Router();
+
+    const login = require("../controllers/login.controller.js");
+    const apiKeyMiddleware = require('../middlewares/apiKeyMiddleware');
 
     // Process login Auth
     router.post("/", login.process);
@@ -12,5 +14,5 @@ module.exports = app => {
      // Active Session
      router.get("/active_session", login.active_session);
 
-    app.use("/api/login", router);
+    app.use("/api/login", apiKeyMiddleware, router);
 }

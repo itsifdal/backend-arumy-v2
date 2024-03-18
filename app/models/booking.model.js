@@ -45,6 +45,11 @@ module.exports = (sequelize, Sequelize) => {
             allowNull: false,
             defaultValue: 'pending' // Set the default value to 'pending'
         },
+        notes: {
+            type: Sequelize.TEXT,
+            allowNull: true,
+            defaultValue: null
+        },
         roomId: {
             type: Sequelize.INTEGER,
             allowNull: true,
@@ -62,6 +67,16 @@ module.exports = (sequelize, Sequelize) => {
         },
         instrumentId: {
             type: Sequelize.INTEGER,
+            allowNull: true,
+            defaultValue: null
+        },
+        paketId: {
+            type: Sequelize.INTEGER,
+            allowNull: true,
+            defaultValue: null
+        },
+        term: {
+            type: Sequelize.STRING(10),
             allowNull: true,
             defaultValue: null
         }

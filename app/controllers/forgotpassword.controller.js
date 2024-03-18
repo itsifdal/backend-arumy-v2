@@ -50,16 +50,16 @@ exports.sendemailrecover = (req, res) => {
 // Function to send email
 exports.sendEmail = (email, token) => {
   var transporter = nodemailer.createTransport({
-    host: 'arumy.quatroacademy.com', // Replace with the SMTP host of your hosting provider
+    host: 'quatromusic.cloud', // Replace with the SMTP host of your hosting provider
     port: 465, // Replace with the SMTP port of your hosting provider
     secure: true,
     auth: {
-      user: 'info@arumy.quatroacademy.com', // Replace with the username (email) of your hosting provider
+      user: 'info@quatromusic.cloud', // Replace with the username (email) of your hosting provider
       pass: '8Vp0?DF(6Y6F', // Replace with the password of your hosting provider
     },
   });
   var mailOptions = {
-    from: 'info@arumy.quatroacademy.com',
+    from: 'info@quatromusic.cloud',
     to: email,
     subject: 'Reset Password Link - Booking Room',
     html: `<p>Anda meminta link reset password, klik <a href=https://arumy.quatroacademy.com/resetpassword/${token}>link</a> reset password <br>LDC Dev</p>`,

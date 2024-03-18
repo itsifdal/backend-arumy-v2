@@ -5,11 +5,20 @@ module.exports = (sequelize, Sequelize) => {
             autoIncrement: true,
             primaryKey: true
         },
+        instrumentId:{
+            type: Sequelize.INTEGER,
+        },
+        packet_category: {
+            type: Sequelize.STRING(50)
+        },
         nama_paket: {
             type: Sequelize.STRING(50)
         },
+        description: {
+            type: Sequelize.TEXT
+        },
         harga: {
-            type: Sequelize.STRING(50)
+            type: Sequelize.STRING(40)
         },
         quota_privat: {
             type: Sequelize.STRING(50)

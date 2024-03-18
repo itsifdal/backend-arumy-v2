@@ -4,6 +4,7 @@ const User    = db.users;
 const Room    = db.rooms;
 const Teacher = db.teachers;
 const Instrument = db.instruments;
+const Paket   = db.pakets;
 const { Sequelize, Op } = require("sequelize");
 const sequelize = require('../config/db.config');
 const cron = require('node-cron');
@@ -23,6 +24,9 @@ Booking.belongsTo(Teacher);
 
 Instrument.hasMany(Booking);
 Booking.belongsTo(Instrument);
+
+Paket.hasMany(Booking);
+Booking.belongsTo(Paket);
 //-- End
 
 const updateExpiredBookings = () => {
@@ -53,6 +57,10 @@ const updateExpiredBookings = () => {
 
 const checkAndRunCronJob = async () => {
     // Tambahkan logika kondisional untuk mengecek apakah ada booking pending yang harus diperbarui
+    // Mengatur zona waktu ke WITA
+    const currentDate   = moment().tz('Asia/Makassar'); // 'Asia/Makassar' adalah zona waktu WITA
+    const formattedDate = currentDate.format('YYYY-MM-DD');
+    
     const pendingBookings = await sequelize.query(`
         SELECT COUNT(*) AS count
         FROM bookings
@@ -72,19 +80,15 @@ const checkAndRunCronJob = async () => {
     }
 };
 
-// Mengatur zona waktu ke WITA
-const currentDate   = moment().tz('Asia/Makassar'); // 'Asia/Makassar' adalah zona waktu WITA
-const formattedDate = currentDate.format('YYYY-MM-DD');
 
 // Menjalankan fungsi checkAndRunCronJob setiap 2 menit
 const cronjob = cron.schedule('8 1 * * *', checkAndRunCronJob);
   
 cronjob.start();
 
-
 // Get Booking List 
 exports.getWithFilter = (req, res) => {
-    const { status, bookingId, roomId, teacherId, studentId, tgl_kelas, jam_booking, page, perPage, eventTime } = req.query;
+    const { bookingId, roomId, teacherId, studentId, tgl_kelas, jam_booking, page, perPage, eventTime, dateFrom, dateTo, class_type, term } = req.query;
 
     // Parse page and perPage parameters and provide default values if not present
     const pageNumber   = parseInt(page) || 1;
@@ -108,20 +112,28 @@ exports.getWithFilter = (req, res) => {
         sort_by = req.query.sort_by; // Use the provided sort_by value
     }
 
+    let status;
+
+    // Split the studentIds string into an array of integers
+    if (req.query.status == undefined || req.query.status == null || req.query.status == "") {
+        status = 'konfirmasi,pending,batal,ijin,kadaluarsa';
+    }else{
+        status = req.query.status;
+    }
+
+    const statusArray = status.split(',').map(String);
+
     // Build the filter object dynamically, ignoring null parameters
     const filter = {
         id: bookingId  || { [Op.ne]: null },
-        status: status || { [Op.ne]: null },
+        status: { [Op.in]: statusArray },
         roomId: roomId || { [Op.ne]: null },
         teacherId: teacherId || { [Op.ne]: null },
         tgl_kelas: tgl_kelas || { [Op.ne]: null },
+        jenis_kelas: class_type || { [Op.ne]: null },
+        term: term || null,
         jam_booking: jam_booking ? { [Op.gte]: jam_booking } : { [Op.ne]: null }
     };
-
-    // Get Current Date and Time
-    // const currentDate    = new Date().toISOString().slice(0, 10);
-    // const timezoneOffset = 420; // GMT +8
-    // const currentTime    = new Date(Date.now() + timezoneOffset * 60 * 1000).toISOString().slice(11, 19);
 
     const timezoneOffset = 8 * 60; // GMT +8 (dalam menit)
     const currentDate = new Date(new Date().getTime() + timezoneOffset * 60 * 1000).toISOString().slice(0, 10);
@@ -145,6 +157,12 @@ exports.getWithFilter = (req, res) => {
             }
         ];
     }
+
+    if (dateFrom && dateTo) {
+        filter.tgl_kelas = {
+            [Op.between]: [dateFrom, dateTo]
+        };
+    }
     
 
     // Only add user_group filter if studentId is not null
@@ -154,10 +172,13 @@ exports.getWithFilter = (req, res) => {
 
     Booking.findAndCountAll({
         where: filter,
-        attributes: ['id', 'user_group', 'teacherId', 'roomId', 'status', 'tgl_kelas', 'jam_booking', 'durasi', 'selesai'],
+        attributes: ['id', 'user_group', 'teacherId', 'roomId', 'status', 'tgl_kelas', 'jam_booking', 'durasi', 'selesai','notes'],
         offset,
         limit,
-        order: [[sort_by, sort]],
+        order: [
+            [sort_by, sort],
+            ['jam_booking', sort],
+        ],
         include: [
             {
                 model: Room,
@@ -186,7 +207,8 @@ exports.getWithFilter = (req, res) => {
 
         res.send({  
             data : data.rows,
-            pagination: pagination
+            pagination: pagination,
+            statusnya:req.query.status
         });
     })
     .catch((err) => {
@@ -266,21 +288,13 @@ exports.findById = (req, res) => {
         ]
     })
     .then((data) => {
-        if (data) {
-            // Parse the "user_group" field as JSON
-            if (data.user_group) {
-                data.user_group = JSON.parse(data.user_group);
-            }
-            res.send(data);
-        } else {
-            res.status(404).send({
-                message: `Booking with id=${id} was not found.`
-            });
-        }
+        res.send({  
+            data : data
+        });
     })
     .catch((err) => {
         res.status(500).send({
-            message: "Error retrieving Booking data with id=" + id
+            message: `Error retrieving Booking data with id ${id}, error: ${err}`
         });
     });
 };
@@ -384,11 +398,14 @@ exports.create = (req, res) => {
         jenis_kelas : req.body.jenis_kelas,
         user_group: JSON.stringify(req.body.user_group),
         durasi : req.body.durasi,
+        term : req.body.term,
         status : req.body.status,
+        notes : req.body.notes,
         roomId: req.body.roomId,
         userId: req.body.userId,
         teacherId: req.body.teacherId,
         instrumentId: req.body.instrumentId,
+        paketId: req.body.paketId || null
     };
 
     Booking.findOne({
@@ -420,7 +437,7 @@ exports.create = (req, res) => {
         },
     })
     .then((existingBooking) => {
-        if (existingBooking && req.body.cabang !== "Online") {
+        if (existingBooking && req.body.cabang !== "Online" && req.body.cabang !== "Home Service") {
             res.status(409).send({
                 message: 'Request tidak berhasil, ada jadwal yang konflik',
             });
@@ -464,40 +481,87 @@ exports.update = (req, res) => {
         cabang: req.body.cabang,
         jam_booking: req.body.jam_booking,
         jenis_kelas: req.body.jenis_kelas,
-        user_group: JSON.stringify(req.body.user_group), // Convert to JSON string before updating
+        user_group: JSON.stringify(req.body.user_group),
         durasi: req.body.durasi,
+        term : req.body.term,
         status: req.body.status,
+        notes: req.body.notes,
         roomId: req.body.roomId,
         userId: req.body.userId,
         teacherId: req.body.teacherId,
         instrumentId: req.body.instrumentId,
+        paketId: req.body.paketId || null
     };
 
-    // Sum jam_booking with durasi into selesai
-    const startMoment = moment(req.body.jam_booking, 'HH:mm:ss'); // Parse the booking time
-    const endMoment = startMoment.clone().add(req.body.durasi, 'minutes'); // Calculate the end time by adding the duration
+    // Calculate end time as you did in the CREATE function
+    const startMoment = moment(req.body.jam_booking, 'HH:mm:ss');
+    const endMoment = startMoment.clone().add(req.body.durasi, 'minutes');
+    updatedBooking.selesai = endMoment.format('HH:mm:ss');
 
-    updatedBooking.selesai = endMoment.format('HH:mm:ss'); // Assign the calculated end time to the 'selesai' field
-
-    Booking.update(updatedBooking, {
-        where: { id: id }
-    }).then((data) => {
-        if (data > 0) {
-            res.send({
-                message: "Data booking berhasil diupdate!"
+    // Validate for scheduling conflicts
+    Booking.findOne({
+        where: {
+            id: { [Op.ne]: id }, // Exclude the current booking
+            roomId: req.body.roomId,
+            tgl_kelas: req.body.tgl_kelas,
+            status: { [Op.ne]: "batal" },
+            cabang: { [Op.ne]: "Online" },
+            [Op.or]: [
+                {
+                    [Op.and]: [
+                        { jam_booking: { [Op.lte]: req.body.jam_booking } },
+                        { selesai: { [Op.gt]: req.body.jam_booking } },
+                    ],
+                },
+                {
+                    [Op.and]: [
+                        { jam_booking: { [Op.lt]: req.body.selesai } },
+                        { selesai: { [Op.gt]: req.body.jam_booking } },
+                    ],
+                },
+                {
+                    [Op.and]: [
+                        { jam_booking: { [Op.gte]: req.body.jam_booking } },
+                        { selesai: { [Op.lte]: req.body.selesai } },
+                    ],
+                },
+            ],
+        },
+    })
+        .then((existingBooking) => {
+            if (existingBooking && req.body.cabang !== "Online" && req.body.cabang !== "Home Service") {
+                res.status(409).send({
+                    message: 'Request tidak berhasil, ada jadwal yang konflik',
+                });
+            } else {
+                // If there are no conflicts, proceed with the update
+                Booking.update(updatedBooking, {
+                    where: { id: id },
+                })
+                    .then((data) => {
+                        if (data > 0) {
+                            res.send({
+                                message: "Data booking berhasil diupdate!",
+                            });
+                        } else {
+                            res.send({
+                                message: `Tidak dapat update booking dengan ID ${id}`,
+                            });
+                        }
+                    })
+                    .catch((err) => {
+                        res.status(500).send({
+                            message: `Error update booking dengan ID ${id}, ${err.message}`,
+                        });
+                    });
+            }
+        })
+        .catch((err) => {
+            res.status(500).send({
+                message: `Terjadi kesalahan pada sisi server, ${err.message}`,
             });
-        } else {
-            res.send({
-                message: `Tidak dapat update booking dengan id ${id}`
-            });
-        }
-    }).catch((err) => {
-        res.status(500).send({
-            message: `Error update booking dengan id ${id}, ${err.message}`,
         });
-    });
 };
-
 
 
 // Update Booking Data

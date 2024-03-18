@@ -1,6 +1,9 @@
 module.exports = app => {
-    const dashboard = require("../controllers/dashboard.controller.js");
+    
     let router      = require("express").Router();
+
+    const dashboard = require("../controllers/dashboard.controller.js");
+    const apiKeyMiddleware = require('../middlewares/apiKeyMiddleware');
     
     // Count Active Booking
     router.get("/bookingCount", dashboard.countBooking);
@@ -17,5 +20,5 @@ module.exports = app => {
     // Booking Data
     router.get("/booking", dashboard.getBooking);
 
-    app.use("/api/dashboard", router);
+    app.use("/api/dashboard", apiKeyMiddleware, router);
 }

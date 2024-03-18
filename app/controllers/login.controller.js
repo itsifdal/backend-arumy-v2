@@ -39,6 +39,7 @@ exports.process = (req, res) => {
                 const userdata = {
                 id: data.id,
                 name: data.name,
+                teacherId : data.teacherId,
                 role: data.role,
                 loggedin: req.session.loggedin,
                 };

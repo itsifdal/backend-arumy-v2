@@ -1,7 +1,9 @@
 module.exports = app => {
-    const post = require("../controllers/post.controller.js");
 
     let router = require("express").Router();
+
+    const post = require("../controllers/post.controller.js");
+    const apiKeyMiddleware = require('../middlewares/apiKeyMiddleware');
     
     // Retrieve all post
     router.get("/", post.list);
@@ -25,5 +27,5 @@ module.exports = app => {
     router.delete("/:id", post.delete);
 
 
-    app.use("/api/post", router);
+    app.use("/api/post", apiKeyMiddleware, router);
 }

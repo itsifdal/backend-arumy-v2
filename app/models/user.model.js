@@ -23,7 +23,7 @@ module.exports = (sequelize, Sequelize) => {
             unique: false
         },
         role: {
-            type: Sequelize.ENUM('Admin', 'Reguler', 'Guru'),
+            type: Sequelize.ENUM('Super Admin','Admin', 'Reguler', 'Guru'),
             allowNull: false,
             defaultValue: 'Reguler' // Set the default value to 'reguler user'
         },

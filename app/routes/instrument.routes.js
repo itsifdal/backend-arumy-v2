@@ -1,7 +1,9 @@
 module.exports = app => {
-    const instrument = require("../controllers/instrument.controller.js");
 
     let router = require("express").Router();
+
+    const instrument = require("../controllers/instrument.controller.js");
+    const apiKeyMiddleware = require('../middlewares/apiKeyMiddleware');
 
     // Retrieve all instruments
     router.get("/", instrument.findAll);
@@ -18,5 +20,5 @@ module.exports = app => {
     // Delete single instrument
     router.delete("/:id", instrument.delete);
 
-    app.use("/api/instrument", router);
+    app.use("/api/instrument", apiKeyMiddleware, router);
 }

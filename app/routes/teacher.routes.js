@@ -1,7 +1,9 @@
 module.exports = app => {
-    const teacher = require("../controllers/teacher.controller.js");
-
+    
     let router = require("express").Router();
+
+    const teacher = require("../controllers/teacher.controller.js");
+    const apiKeyMiddleware = require('../middlewares/apiKeyMiddleware');
 
     // Retrieve all teachers
     router.get("/", teacher.findAll);
@@ -24,5 +26,5 @@ module.exports = app => {
     // Delete single teacher
     router.delete("/:id", teacher.delete);
 
-    app.use("/api/teacher", router);
+    app.use("/api/teacher", apiKeyMiddleware, router);
 }

@@ -1,41 +1,28 @@
 module.exports = (sequelize, Sequelize) => {
-    const Payment = sequelize.define("payment", {
+    const Refund = sequelize.define("refund", {
         id:{
             type: Sequelize.INTEGER,
             autoIncrement: true,
             primaryKey: true
         },
-        paketId: {
-            type: Sequelize.INTEGER
+        userId:{
+            type: Sequelize.INTEGER,
+            allowNull: true, 
+            defaultValue: null
         },
         studentId: {
             type: Sequelize.INTEGER,
             allowNull: true, 
             defaultValue: null
         },
-        userId: {
+        paketId: {
             type: Sequelize.INTEGER
         },
-        tgl_tagihan: {
-            type: Sequelize.DATE,
-            allowNull: true, 
-            defaultValue: null
-        },
-        tgl_bayar: {
-            type: Sequelize.DATE,
-            allowNull: true, 
-            defaultValue: null
-        },
-        jumlah_bayar : {
+        refund_amount : {
             type : Sequelize.STRING(15),
             allowNull: true, 
             defaultValue: null
-        },
-        bayar_via : {
-            type : Sequelize.STRING(15),
-            allowNull: true, 
-            defaultValue: null
-        },
+        }, 
         quota_privat : {
             type : Sequelize.STRING(15),
             allowNull: true, 
@@ -46,24 +33,20 @@ module.exports = (sequelize, Sequelize) => {
             allowNull: true, 
             defaultValue: null
         },
-        confirmed_status : {
-            type : Sequelize.BOOLEAN,
-            allowNull: false, 
-            defaultValue: false
-        },
-        receipt_number : {
-            type : Sequelize.STRING(30),
+        transfer_date : {
+            type : Sequelize.DATEONLY,
             allowNull: true, 
             defaultValue: null
         },
-        term: {
-            type: Sequelize.STRING(10),
+        notes: {
+            type: Sequelize.TEXT,
             allowNull: true,
             defaultValue: null
         }
-    },{
+    },
+    {
         timestamps: false // Disable automatic timestamps for this model
     });
 
-    return Payment;
+    return Refund;
 }

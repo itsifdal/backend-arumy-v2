@@ -1,7 +1,9 @@
 module.exports = app => {
-    const booking = require("../controllers/booking.controller.js");
-
+    
     let router = require("express").Router();
+
+    const booking = require("../controllers/booking.controller.js");
+    const apiKeyMiddleware = require('../middlewares/apiKeyMiddleware');
 
     // Get Booking List By Filter
     router.get("/", booking.getWithFilter);
@@ -30,5 +32,5 @@ module.exports = app => {
     // Delete booking 
     router.delete("/:id", booking.delete);
     
-    app.use("/api/booking", router);
+    app.use("/api/booking", apiKeyMiddleware, router);
 }

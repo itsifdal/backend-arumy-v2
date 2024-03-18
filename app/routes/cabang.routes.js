@@ -1,7 +1,9 @@
 module.exports = app => {
-    const cabang = require("../controllers/cabang.controller.js");
-
+    
     let router = require("express").Router();
+
+    const cabang = require("../controllers/cabang.controller.js");
+    const apiKeyMiddleware = require('../middlewares/apiKeyMiddleware');
 
     // Retrieve all cabangs
     router.get("/", cabang.findAll);
@@ -18,5 +20,5 @@ module.exports = app => {
     // Delete single cabang
     router.delete("/:id", cabang.delete);
 
-    app.use("/api/cabang", router);
+    app.use("/api/cabang", apiKeyMiddleware, router);
 }

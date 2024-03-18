@@ -1,7 +1,9 @@
 module.exports = app => {
-    const room = require("../controllers/room.controller.js");
 
     let router = require("express").Router();
+    
+    const room = require("../controllers/room.controller.js");
+    const apiKeyMiddleware = require('../middlewares/apiKeyMiddleware');
     
     // Retrieve all room
     router.get("/", room.list);
@@ -19,5 +21,5 @@ module.exports = app => {
     router.delete("/:id", room.delete);
 
 
-    app.use("/api/room", router);
+    app.use("/api/room", apiKeyMiddleware, router);
 }
