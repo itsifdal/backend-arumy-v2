@@ -4,7 +4,7 @@ const Teacher = db.teachers;
 const Op = db.Sequelize.Op;
 
 //-- Relationships
-Teacher.hasOne(User);
+//Teacher.hasOne(User);
 
 // Return User
 exports.list = (req, res) => {

@@ -16,7 +16,7 @@ Refund.belongsTo(Student);
 
 // Retrieve all refunds from the database.
 exports.findAll = (req, res) => {
-    const { studentId, paketId, page, perPage, dateFrom, dateTo } = req.query;
+    const { studentId, paketId, page, perPage, dateFrom, dateTo, term, termYear } = req.query;
 
     // Parse page and perPage parameters and provide default values if not present
     const pageNumber = parseInt(page) || 1;
@@ -30,10 +30,12 @@ exports.findAll = (req, res) => {
     let sort    = "DESC"; 
     let sort_by = "transfer_date"; 
 
+    // Check sort
     if(req.query.sort != undefined && req.query.sort != null) {
         sort = req.query.sort;
     }
 
+    // Check sort_by
     if(req.query.sort_by != undefined && req.query.sort_by != null) {
         sort_by = req.query.sort_by;
     }
@@ -41,11 +43,20 @@ exports.findAll = (req, res) => {
     const filter = {
         studentId: studentId || { [Op.ne] : null },
         paketId: paketId || { [Op.ne] : null }
+    };
+
+    // Check term
+    if(term){
+        filter.term = term;
     }
 
-    // if dateFrom & dateTo assigned
-    if (dateFrom && dateTo) {
+    // Check termYear
+    if(termYear){
+        filter.termYear = termYear;
+    }
 
+    // Check dateFrom and dateTo
+    if (dateFrom && dateTo && term == null && termYear == null) {
         filter.transfer_date = {
             [Op.between]: [dateFrom, dateTo]
         };
@@ -110,20 +121,24 @@ exports.findOne = (req, res) => {
 // Create and Save a new refund
 exports.create = (req, res) => {
     const refund = {
+        userId: req.body.userId,
         studentId: req.body.studentId,
         paketId: req.body.paketId,
         refund_amount: req.body.refund_amount,
         quota_privat: req.body.quota_privat,
         quota_group: req.body.quota_group,
         transfer_date: req.body.transfer_date,
-        notes: req.body.notes
+        notes: req.body.notes,
+        term:req.body.term,
+        termYear:req.body.termYear
     };
     // Save refund in the database
     Refund.create(refund)
         .then((refunds) => {
             res.json({message: 'Record refund berhasil ditambahkan', data: refunds });
         }).catch((err) => {
-            res.status(500).json({ message: 'Tidak berhasil menambah data refund' });
+            res.status(500).json({ message: `Tidak berhasil menambah data refund` });
+            //res.status(500).json({ message: `Tidak berhasil menambah data refund, error : ${err.message}` });
         });
 };
 

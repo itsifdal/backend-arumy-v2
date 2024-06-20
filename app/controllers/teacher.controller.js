@@ -49,7 +49,7 @@ exports.findAll = (req, res) => {
 
 exports.dashboard = (req, res) => {
     const id = req.params.id;
-    const { tglAwal, tglAkhir } = req.query;
+    const { tglAwal, tglAkhir, term } = req.query;
   
     const query = `
     SELECT
@@ -66,7 +66,8 @@ exports.dashboard = (req, res) => {
           COUNT(CASE WHEN jenis_kelas = 'group' AND status = 'pending' THEN 1 ELSE NULL END) AS groupPendingCount,
           COUNT(CASE WHEN jenis_kelas = 'group' AND status = 'kadaluarsa' THEN 1 ELSE NULL END) AS groupExpiredCount,
           COUNT(CASE WHEN jenis_kelas = 'group' AND status = 'ijin' THEN 1 ELSE NULL END) AS groupIjinCount,
-          GROUP_CONCAT(IF(jenis_kelas = 'group' AND status IN ('batal', 'konfirmasi'), '1', '0')) AS groupCounts
+          GROUP_CONCAT(IF(jenis_kelas = 'group' AND status IN ('batal', 'konfirmasi'), '1', '0')) AS groupCounts,
+          term
         FROM bookings
         WHERE teacherId = '${id}' 
           AND status IN ('batal', 'konfirmasi', 'pending', 'kadaluarsa', 'ijin')
@@ -102,6 +103,7 @@ exports.dashboard = (req, res) => {
                 groupPendingCount: 0,
                 groupExpiredCount: 0,
                 groupIjinCount: 0,
+                bookingTerm: 0
               };
             }
   
@@ -131,6 +133,7 @@ exports.dashboard = (req, res) => {
             resultData[studentId].groupPendingCount += item.groupPendingCount;
             resultData[studentId].groupExpiredCount += item.groupExpiredCount;
             resultData[studentId].groupIjinCount += item.groupIjinCount;
+            resultData[studentId].bookingTerm = parseInt(item.term);
           });
         });
   
@@ -150,8 +153,17 @@ exports.dashboard = (req, res) => {
           .then(() => {
             // Mengonversi groupCount ke angka
             const finalData = Object.values(resultData);
+
+            let filteredData = finalData;
+
+            // Filter based on term
+            if (term) {
+              filteredData = filteredData.filter(
+                (item) => item.bookingTerm == parseInt(term)
+              );
+            }
   
-            res.send({ data: finalData });
+            res.send({ data: filteredData });
           })
           .catch(err => {
             res.status(500).send({
