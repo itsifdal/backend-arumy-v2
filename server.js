@@ -1,21 +1,21 @@
-const express = require('express')
-const app     = express()
-const port    = 8000
+const express = require("express");
+const app = express();
+const port = 8000;
 
-const bodyParser    = require("body-parser");
-const cors          = require("cors");
-const FileUpload    = require('express-fileupload');
-const cookieParser  = require('cookie-parser');
-const sessions      = require('express-session');
-const { sequelize } = require('./app/models');
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const FileUpload = require("express-fileupload");
+const cookieParser = require("cookie-parser");
+const sessions = require("express-session");
+const { sequelize } = require("./app/models");
 
 // CORS enabled for all
-app.use(cors())
+app.use(cors());
 
 // Database synchronization
 sequelize.sync();
 
-// File Uploading Needs 
+// File Uploading Needs
 app.use(FileUpload());
 app.use(express.static("public"));
 
@@ -29,15 +29,16 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 //session middleware
-app.use(sessions({
+app.use(
+  sessions({
     resave: false,
-    saveUninitialized:false,
+    saveUninitialized: false,
     secret: "thisismysecrctekeyfhrgfgrfrty84fwir767",
-    cookie: { maxAge: 72000 }
-}));
+    cookie: { maxAge: 72000 },
+  })
+);
 
-
-app.get('/', function(req, res) {
+app.get("/", function (req, res) {
   if (req.session.loggedin === true) {
     res.status(200).send({ loggedin: true });
   } else {
@@ -45,11 +46,9 @@ app.get('/', function(req, res) {
   }
 });
 
-
 app.listen(port, () => {
-  console.log(`Web Service Running on port ${port}`)
-})
-
+  console.log(`Web Service Running on port ${port}`);
+});
 
 // Routes
 require("./app/routes/login.routes")(app);
