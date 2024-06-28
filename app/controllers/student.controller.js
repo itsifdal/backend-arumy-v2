@@ -1,10 +1,13 @@
 const db = require("../models");
 const Student = db.students;
 const Payment = db.payments;
+const Refund  = db.refunds;
 
 const Booking = db.bookings;
 const Op = db.Sequelize.Op;
 const sequelize = require("../config/db.config");
+
+//-- Relationships
 
 // Return student
 exports.list = (req, res) => {
@@ -153,28 +156,6 @@ exports.quotaDetails = async (req, res) => {
       raw: true,
     });
 
-    // Payment filter objects
-    const paymentFilter = {
-        studentId: uniqueStudentIds,
-        ...paymentWhereCondition,
-    };
-
-    // Check term
-    if(term){
-      paymentFilter.term = term;
-    }
-
-    // Check termYear
-    if(termYear){
-      paymentFilter.termYear = termYear;
-    }
-
-    const payments = await Payment.findAll({
-      where: paymentFilter,
-      attributes: ["studentId", "quota_privat", "quota_group", "term", "id"],
-      raw: true,
-    });
-
     const resultData = {};
     students.forEach((student) => {
 
@@ -193,6 +174,54 @@ exports.quotaDetails = async (req, res) => {
       };
     });
 
+    // Payment filter objects
+    const paymentFilter = {
+        studentId: uniqueStudentIds,
+        ...paymentWhereCondition,
+    };
+
+    // Check term
+    if(term){
+      paymentFilter.term = term;
+    }
+
+    // Check termYear
+    if(termYear){
+      paymentFilter.termYear = termYear;
+    }
+
+    // Construct the dynamic WHERE clause
+    const whereConditions = Object.entries(paymentFilter).map(([key, value]) => {
+        if (Array.isArray(value)) {
+            return `payment.${key} IN (${value.join(', ')})`;
+        } else {
+            return `payment.${key} = ${typeof value === 'string' ? `'${value}'` : value}`;
+        }
+    });
+
+    // Join all conditions with 'AND'
+    const whereClause = whereConditions.length ? 'WHERE ' + whereConditions.join(' AND ') : '';
+
+    // Query Payment
+    const queryPayment = `
+      SELECT 
+          payment.studentId, 
+          payment.quota_privat, 
+          payment.quota_group, 
+          payment.term, payment.id, 
+          payment.paketId, 
+          payment.jumlah_bayar
+      FROM payments AS payment
+      ${whereClause}
+    `;
+
+    // Execute Query Payments
+    const payments = await sequelize.query(queryPayment, {
+      type: sequelize.QueryTypes.SELECT
+    });
+
+    
+    // Loop Booking
     bookings.forEach((booking) => {
 
       const studentIds = JSON.parse(booking.studentId);
@@ -211,7 +240,8 @@ exports.quotaDetails = async (req, res) => {
       });
     });
 
-    payments.forEach((payment) => {
+    // Calculate Payment details
+    const paymentPromises = payments.map(async (payment) => {
 
       const studentId = payment.studentId;
 
@@ -219,28 +249,44 @@ exports.quotaDetails = async (req, res) => {
         resultData[studentId].paymentTerm       = parseInt(payment.term) || payment.term;
         resultData[studentId].privateQuotaTotal += parseInt(payment.quota_privat) || 0;
         resultData[studentId].groupQuotaTotal   += parseInt(payment.quota_group) || 0;
+        resultData[studentId].paketId           = payment.paketId || 0;
       }
-
 
     });
 
+    await Promise.all(paymentPromises);
+
+    // Calculate QuotaLeft
     for (const studentId in resultData) {
       const student = resultData[studentId];
       student.privateQuotaLeft  = student.privateQuotaTotal - student.privateQuotaUsed;
       student.groupQuotaLeft    = student.groupQuotaTotal - student.groupQuotaUsed;
     }
 
+    // Get Refunds
+    const refunds = await Refund.findAll({
+      where: { 
+        studentId: uniqueStudentIds, 
+        term: term || null,
+      },
+      attributes: ['studentId', 'paketId', 'quota_group', 'quota_privat', 'term', 'termYear'],
+    });
+
+    // Calculate Refund details
+    refunds.map(async (refund) => {
+
+      const studentId = refund.studentId;
+
+      if (resultData[studentId]) {
+        resultData[studentId].groupQuotaTotal     = resultData[studentId].groupQuotaTotal   - parseInt(refund.quota_group) || 0;
+        resultData[studentId].privateQuotaTotal   = resultData[studentId].privateQuotaTotal - parseInt(refund.quota_privat) || 0;
+      }
+
+    });
+    
+
     const originalData = Object.values(resultData);
-
-    ////////////////////////// Data filtering logics on q (studentName)
-    //const filteredData = q ? originalData.filter((item) => item.studentName.toLowerCase().includes(q.toLowerCase())) : originalData;
-    // const filteredData = originalData.filter((item) => {
-    //   const qMatch = !q || item.studentName.toLowerCase().includes(q.toLowerCase());
-    //   const termMatch = !term || item.bookingTerm === parseInt(term) || item.paymentTerm === parseInt(term);
-    //   return qMatch && termMatch;
-    // });
-
-    let filteredData = originalData.slice();
+    let filteredData   = originalData.slice();
 
     // Filter based on searchStudent
     if (q) {
